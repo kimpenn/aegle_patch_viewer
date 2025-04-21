@@ -6,9 +6,30 @@ import os
 
 Image.MAX_IMAGE_PIXELS = None
 
+# Usage:
+# conda activate aegle_patch_viewer
+# streamlit run app.py --server.headless true
+
+mock_flg = False
+image_path = "/Users/kuangda/Developer/1-projects/4-codex-analysis/0-phenocycler-penntmc-pipeline/aegle_patch_viewer/data/extended_extracted_channel_image.png"
+# image_path = "/Users/kuangda/Developer/1-projects/4-codex-analysis/0-phenocycler-penntmc-pipeline/aegle_patch_viewer/NW_1_Scan1_rgb.png"
+# image_path = "/Users/kuangda/Developer/1-projects/4-codex-analysis/0-phenocycler-penntmc-pipeline/aegle_patch_viewer/NW_1_Scan1_dev_rgb.png"
+
+# Key parameters
+patch_height = 1440
+patch_width = 1920
+overlap = 0.1
+# patch_height = 5000
+# patch_width = 5000
+# patch_height = 10000
+# patch_width = 10000
+# patch_height = 20000
+# patch_width = 20000    
+# overlap = 0.0
+
 def extend_image(image, patch_height, patch_width, step_height, step_width):
     """
-    Extend the image to ensure full coverage when cropping patches.
+    # Extend the image to ensure full coverage when cropping patches.
 
     Args:
         image (np.ndarray): The image to extend.
@@ -111,6 +132,9 @@ def read_image(
     start_time = time.time()
     # Step 1: Open the image
     image = Image.open(image_path)
+    
+    # chop the image to 1/2 along vertical axis
+    # image = image.crop((0, 0, image.width, image.height // 2))
     print(f"image.size: {image.size}")
     step_time = time.time()
     print(f"Time to open image: {step_time - start_time:.2f} seconds")
@@ -159,21 +183,9 @@ def generate_patches(
     return patches
 
 
-# Main app
-mock_flg = False
-# image_path = "/workspaces/codex-analysis/data/NW_Ovary_16/Scan1/NW_1_Scan1_dev_rgb.png"
-
-
 def main():
     print("---------- Starting Streamlit app...")
     st.title("Image Patch Visualizer")
-
-    # Parameters
-    mock_flg = False
-    image_path = "/Users/kuangda/Developer/1-projects/4-codex-analysis/0-phenocycler-penntmc-pipeline/aegle_patch_viewer/NW_1_Scan1_rgb.png"
-    patch_height = 1440
-    patch_width = 1920
-    overlap = 0.1
 
     # Define patch size and overlap
     overlap_height = int(patch_height * overlap)
@@ -211,12 +223,49 @@ def main():
     min_index = min(patch_mapping.keys())
     max_index = max(patch_mapping.keys())
 
+    # Initialize session state for showing all patches
+    if "show_all_patches" not in st.session_state:
+        st.session_state.show_all_patches = False
+    
+    # Initialize session state for clearing selections
+    if "clear_selections" not in st.session_state:
+        st.session_state.clear_selections = False
+
+    # Create buttons side by side using columns
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Show All Patches"):
+            st.session_state.show_all_patches = True
+            st.session_state.clear_selections = False
+            st.rerun()
+    
+    with col2:
+        if st.button("Reset to Default"):
+            st.session_state.clear_selections = True
+            st.session_state.show_all_patches = False
+            st.rerun()
+
+    # Determine default selection based on session state
+    if st.session_state.clear_selections:
+        default_selection = [min_index]
+    elif st.session_state.show_all_patches:
+        default_selection = list(patch_mapping.keys())
+    else:
+        default_selection = [min_index]
+
     # Allow the user to select multiple patch indices
     selected_indices = st.multiselect(
         f"Select Patch Indices ({min_index} - {max_index}):",
         options=list(patch_mapping.keys()),
-        default=[min_index],
+        default=default_selection,
+        key="multiselect"
     )
+
+    # Reset the session states if user manually changes selection
+    if selected_indices and st.session_state.clear_selections:
+        st.session_state.clear_selections = False
+    elif selected_indices != list(patch_mapping.keys()) and st.session_state.show_all_patches:
+        st.session_state.show_all_patches = False
 
     if selected_indices:
         # Create a copy of the scaled image to draw on
@@ -275,4 +324,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-# streamlit run app.py --server.headless true
