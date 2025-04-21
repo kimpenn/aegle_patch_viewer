@@ -16,8 +16,8 @@ image_path = "/Users/kuangda/Developer/1-projects/4-codex-analysis/0-phenocycler
 # image_path = "/Users/kuangda/Developer/1-projects/4-codex-analysis/0-phenocycler-penntmc-pipeline/aegle_patch_viewer/NW_1_Scan1_dev_rgb.png"
 
 # Key parameters
-patch_height = 1440
-patch_width = 1920
+patch_height = 1000
+patch_width = 1000
 overlap = 0.1
 # patch_height = 5000
 # patch_width = 5000
@@ -187,13 +187,80 @@ def main():
     print("---------- Starting Streamlit app...")
     st.title("Image Patch Visualizer")
 
-    # Define patch size and overlap
+    # Create sidebar for parameter configuration
+    st.sidebar.header("Patch Configuration")
+    
+    # Initialize session state for parameters if they don't exist
+    if "patch_height" not in st.session_state:
+        st.session_state.patch_height = 1000
+    if "patch_width" not in st.session_state:
+        st.session_state.patch_width = 1000
+    if "overlap" not in st.session_state:
+        st.session_state.overlap = 0.1
+    if "use_custom" not in st.session_state:
+        st.session_state.use_custom = False
+    
+    # Predefined options for patch dimensions
+    height_options = [500, 1000, 1440, 5000, 10000, 20000]
+    width_options = [500, 1000, 1920, 5000, 10000, 20000]
+    overlap_options = [0.0, 0.1, 0.2, 0.3, 0.5]
+    
+    # Option for custom values
+    use_custom = st.sidebar.checkbox("Use custom values", value=st.session_state.use_custom, key="use_custom")
+    
+    # Set patch height
+    if use_custom:
+        patch_height = st.sidebar.number_input("Custom Patch Height", min_value=100, max_value=50000, value=st.session_state.patch_height, step=100, key="patch_height")
+    else:
+        height_index = height_options.index(st.session_state.patch_height) if st.session_state.patch_height in height_options else 1
+        patch_height = st.sidebar.selectbox("Patch Height", height_options, index=height_index, key="patch_height")
+    
+    # Set patch width
+    if use_custom:
+        patch_width = st.sidebar.number_input("Custom Patch Width", min_value=100, max_value=50000, value=st.session_state.patch_width, step=100, key="patch_width")
+    else:
+        width_index = width_options.index(st.session_state.patch_width) if st.session_state.patch_width in width_options else 1
+        patch_width = st.sidebar.selectbox("Patch Width", width_options, index=width_index, key="patch_width")
+    
+    # Set overlap
+    if use_custom:
+        overlap = st.sidebar.number_input("Custom Overlap (0.0-0.9)", min_value=0.0, max_value=0.9, value=st.session_state.overlap, step=0.05, format="%.2f", key="overlap")
+    else:
+        overlap_index = overlap_options.index(st.session_state.overlap) if st.session_state.overlap in overlap_options else 1
+        overlap = st.sidebar.selectbox("Overlap", overlap_options, index=overlap_index, key="overlap")
+    
+    # Calculate step sizes based on selected parameters
     overlap_height = int(patch_height * overlap)
     overlap_width = int(patch_width * overlap)
 
     # Calculate step size for cropping
     step_height = patch_height - overlap_height
     step_width = patch_width - overlap_width
+
+    # Display current configuration
+    st.sidebar.markdown("---")
+    st.sidebar.markdown(f"**Current Configuration:**")
+    st.sidebar.markdown(f"Patch Size: {patch_height}×{patch_width} px")
+    st.sidebar.markdown(f"Overlap: {overlap:.2f} ({overlap_height}×{overlap_width} px)")
+    st.sidebar.markdown(f"Step Size: {step_height}×{step_width} px")
+    
+    # Add buttons to apply changes or reset to defaults
+    st.sidebar.markdown("---")
+    col1, col2 = st.sidebar.columns(2)
+    
+    with col1:
+        if st.button("Apply Changes"):
+            # The changes are automatically applied due to session state
+            st.rerun()
+    
+    with col2:
+        if st.button("Reset Parameters"):
+            # Reset to default values
+            st.session_state.patch_height = 1000
+            st.session_state.patch_width = 1000
+            st.session_state.overlap = 0.1
+            st.session_state.use_custom = False
+            st.rerun()
 
     # Read and process the image
     if mock_flg:
